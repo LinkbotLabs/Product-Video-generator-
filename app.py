@@ -26,6 +26,30 @@ os.makedirs(VIDEO_DIR, exist_ok=True)
 os.makedirs(AUDIO_DIR, exist_ok=True)
 
 # -------------------
+# Login (choose Demo or Full)
+# -------------------
+@app.route("/", methods=["GET", "POST"])
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        mode = request.form.get("mode")
+
+        if mode == "demo":
+            session["user_type"] = "demo"
+            flash("Demo mode activated! Browse products, but video generation is disabled.", "info")
+            return redirect(url_for("dashboard"))
+
+        elif mode == "full":
+            password = request.form.get("password")
+            if password == os.getenv("FULL_MODE_PASSWORD"):  # stored in .env
+                return redirect(url_for("activate"))
+            else:
+                flash("Invalid password for full mode.", "error")
+
+    return render_template("login.html")
+
+
+# -------------------
 # Full Mode Activation
 # -------------------
 @app.route("/activate", methods=["GET", "POST"])
@@ -46,9 +70,10 @@ def activate():
 # -------------------
 @app.route("/dashboard", methods=["GET", "POST"])
 def dashboard():
-    if session.get("user_type") != "full":
-        flash("Full mode only.", "error")
-        return redirect(url_for("activate"))
+    user_type = session.get("user_type")
+
+    if not user_type:
+        return redirect(url_for("login"))
 
     category = request.form.get("category") if request.method == "POST" else None
     products = []
@@ -56,7 +81,6 @@ def dashboard():
     if category:
         products = get_fallback_products(category)
         for p in products:
-            # Default TTS text is the description
             p["default_text"] = p.get("description", "")
             p["video"] = None
             if session.get("amazon_tag") and p.get("link"):
@@ -69,19 +93,19 @@ def dashboard():
         categories=CATEGORIES,
         category=category,
         products=products,
-        user_type="full",
-        full_limit_reached=session.get("full_uses", 0) >= MAX_FULL,
+        user_type=user_type,
+        full_limit_reached=session.get("full_uses", 0) >= MAX_FULL if user_type == "full" else True,
         max_full=MAX_FULL
     )
 
 
 # -------------------
-# Generate Video per Product
+# Generate Video per Product (Full mode only)
 # -------------------
 @app.route("/generate_video", methods=["POST"])
 def generate_video():
     if session.get("user_type") != "full":
-        flash("Video generation available for full users only.", "error")
+        flash("Video generation available for full users only. You are in demo mode.", "error")
         return redirect(url_for("dashboard"))
 
     if session.get("full_uses", 0) >= MAX_FULL:
@@ -122,10 +146,9 @@ def generate_video():
 @app.route("/logout")
 def logout():
     session.clear()
-    return redirect(url_for("activate"))
+    return redirect(url_for("login"))
 
 
 if __name__ == "__main__":
-    import os
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=False)
