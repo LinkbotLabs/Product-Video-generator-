@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Product Dashboard</title>
+  <script src="https://js.puter.com/v2/"></script>
+  <style>
+    body {
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(135deg, #f4f4f9, #e8ecf7);
+      color: #333;
+    }
+    header {
+      background: #007BFF;
+      color: #fff;
+      padding: 20px;
+      text-align: center;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+    }
+    h1 { margin: 0; font-size: 28px; }
+    main { padding: 30px; max-width: 900px; margin: auto; }
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.12);
+    }
+    .card h2 { margin-top: 0; }
+    .btn {
+      display: inline-block;
+      padding: 10px 18px;
+      margin-top: 10px;
+      background: #007BFF;
+      color: #fff;
+      text-decoration: none;
+      border-radius: 6px;
+      font-size: 14px;
+      transition: background 0.3s ease;
+      cursor: pointer;
+    }
+    .btn:hover { background: #0056b3; }
+    .select-wrapper { display: inline-block; position: relative; margin-bottom: 20px; }
+    select {
+      appearance: none;
+      padding: 10px 14px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      font-size: 14px;
+      background: #fff url("data:image/svg+xml;utf8,<svg fill='gray' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>") no-repeat right 10px center;
+      background-size: 16px;
+      cursor: pointer;
+      min-width: 200px;
+    }
+    .product {
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      padding: 15px;
+      margin-bottom: 15px;
+      background: #fafafa;
+    }
+    .product h3 { margin-top: 0; color: #007BFF; }
+    audio, video { margin-top: 12px; display: block; max-width: 100%; }
+    ul { list-style: none; padding-left: 0; }
+    ul li { margin: 8px 0; }
+    .alert {
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 15px;
+    }
+    .alert-success { background: #d4edda; color: #155724; }
+    .alert-error { background: #f8d7da; color: #721c24; }
+    .usage { margin-top: 10px; font-size: 14px; color: #555; }
+    .chat-box { margin-top: 12px; }
+    .chat-output { margin-top: 6px; background: #e1e1e1; padding: 10px; border-radius: 6px; }
+    textarea { font-family: inherit; font-size: 14px; padding: 8px; border-radius: 6px; border: 1px solid #ccc; resize: vertical; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Product Dashboard</h1>
+  </header>
+  <main>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <form method="POST">
+      <div class="select-wrapper">
+        <select name="category" onchange="this.form.submit()">
+          <option value="">Select Category</option>
+          {% for cat in categories %}
+            <option value="{{ cat.key }}" {% if cat.key == category %}selected{% endif %}>{{ cat.label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </form>
+
+    {% if category %}
+      <p class="usage">
+        {% if user_type == "demo" %}
+          Demo uses: {{ session.demo_uses }} / {{ max_demo }}
+        {% else %}
+          Full uses: {{ session.full_uses }} / {{ max_full }}
+        {% endif %}
+      </p>
+
+      {% for p in products %}
+        <div class="product card">
+          <h3>{{ p.title }} - {{ p.price }}</h3>
+          <p>{{ p.script }}</p>
+
+          {% if user_type == "full" and full_pipeline_available %}
+            <form method="POST" action="{{ url_for('generate_video') }}">
+              <input type="hidden" name="category" value="{{ category }}">
+              <input type="hidden" name="product_index" value="{{ loop.index0 }}">
+
+              <!-- Custom TTS Input -->
+              <label for="tts_text_{{ loop.index0 }}">Custom TTS:</label>
+              <textarea name="tts_text" id="tts_text_{{ loop.index0 }}" rows="3" style="width:100%; margin-top:5px;" placeholder="Enter text for text-to-speech">{{ p.script }}</textarea>
+
+              <button type="submit" class="btn" style="background:#000;color:#fff; margin-top:8px;">Generate Full Video</button>
+            </form>
+          {% endif %}
+
+          {% if p.audio %}
+            <audio controls>
+              <source src="{{ p.audio }}" type="audio/mpeg">
+              Your browser does not support the audio element.
+            </audio>
+          {% endif %}
+
+          {% if p.amazon_link %}
+            <p><a href="{{ p.amazon_link }}" target="_blank" class="btn">Buy on Amazon</a></p>
+          {% endif %}
+
+          <div class="chat-box">
+            <button class="btn" onclick="runChat('{{ p.title }}')">Ask GPT-4 Nano About This Product</button>
+            <div class="chat-output" id="chat-{{ loop.index0 }}"></div>
+          </div>
+
+        </div>
+      {% endfor %}
+    {% endif %}
+
+    <p><a href="{{ url_for('logout') }}" class="btn">Logout</a></p>
+  </main>
+
+  <script>
+    async function runChat(productTitle) {
+      const index = Array.from(document.querySelectorAll('.product'))
+                        .findIndex(el => el.querySelector('h3').textContent.includes(productTitle));
+      const output = document.getElementById(`chat-${index}`);
+      output.textContent = 'Loading GPT-4 Nano response...';
+      try {
+        const response = await puter.ai.chat(`Give me a short review and tips about: ${productTitle}`);
+        output.textContent = response;
+      } catch (err) {
+        output.textContent = 'Error: ' + err.message;
+      }
+    }
+  </script>
+</body>
+</html>
