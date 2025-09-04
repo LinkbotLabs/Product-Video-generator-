@@ -4,21 +4,56 @@
 <meta charset="UTF-8">
 <title>Login</title>
 <style>
-    body { font-family: Arial, sans-serif; background: linear-gradient(135deg, #0d0d0d, #1a1a2e); color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
-    .login-box { background: rgba(0,0,0,0.8); padding: 30px; border-radius: 10px; text-align: center; width: 300px; }
-    input, button { width: 100%; padding: 10px; margin: 10px 0; border-radius: 5px; border: none; }
-    button { background: #4b0082; color: #fff; cursor: pointer; font-size: 16px; }
+    body { 
+        font-family: Arial, sans-serif; 
+        background: linear-gradient(135deg, #0d0d0d, #1a1a2e); 
+        color: #fff; 
+        display: flex; 
+        flex-direction: column; 
+        align-items: center; 
+        justify-content: center; 
+        height: 100vh; 
+    }
+    .login-box { 
+        background: rgba(0,0,0,0.8); 
+        padding: 30px; 
+        border-radius: 10px; 
+        text-align: center; 
+        width: 300px; 
+    }
+    input, button { 
+        width: 100%; 
+        padding: 10px; 
+        margin: 10px 0; 
+        border-radius: 5px; 
+        border: none; 
+    }
+    button { 
+        background: #4b0082; 
+        color: #fff; 
+        cursor: pointer; 
+        font-size: 16px; 
+    }
     button:hover { background: #6a0dad; }
 </style>
 </head>
 <body>
 <div class="login-box">
-    <h2>Login</h2>
+    <h2>Select Mode</h2>
+
+    <!-- Demo Mode -->
     <form method="POST" action="{{ url_for('login') }}">
-        <input type="text" name="username" placeholder="Username" required>
-        <input type="password" name="password" placeholder="Password" required>
-        <button type="submit" name="mode" value="demo">Demo Mode</button>
-        <button type="submit" name="mode" value="full">Full Mode</button>
+        <input type="hidden" name="mode" value="demo">
+        <button type="submit">Enter Demo Mode</button>
+    </form>
+
+    <hr style="border-color: #444; margin: 20px 0;">
+
+    <!-- Full Mode -->
+    <form method="POST" action="{{ url_for('login') }}">
+        <input type="hidden" name="mode" value="full">
+        <input type="password" name="password" placeholder="Enter Full Mode Password" required>
+        <button type="submit">Enter Full Mode</button>
     </form>
 </div>
 </body>
