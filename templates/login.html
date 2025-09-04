@@ -1,61 +1,40 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Login</title>
-<style>
-    body { 
-        font-family: Arial, sans-serif; 
-        background: linear-gradient(135deg, #0d0d0d, #1a1a2e); 
-        color: #fff; 
-        display: flex; 
-        flex-direction: column; 
-        align-items: center; 
-        justify-content: center; 
-        height: 100vh; 
-    }
-    .login-box { 
-        background: rgba(0,0,0,0.8); 
-        padding: 30px; 
-        border-radius: 10px; 
-        text-align: center; 
-        width: 300px; 
-    }
-    input, button { 
-        width: 100%; 
-        padding: 10px; 
-        margin: 10px 0; 
-        border-radius: 5px; 
-        border: none; 
-    }
-    button { 
-        background: #4b0082; 
-        color: #fff; 
-        cursor: pointer; 
-        font-size: 16px; 
-    }
-    button:hover { background: #6a0dad; }
-    hr { border-color: #444; margin: 20px 0; }
-</style>
-</head>
-<body>
-<div class="login-box">
-    <h2>Select Mode</h2>
+from flask import Flask, render_template, request, session, redirect, url_for, flash
+import os
 
-    <!-- Demo Mode -->
-    <form method="POST" action="{{ url_for('login') }}">
-        <input type="hidden" name="mode" value="demo">
-        <button type="submit">Enter Demo Mode</button>
-    </form>
+app = Flask(__name__)
+app.secret_key = os.urandom(16)  # or your existing secret
 
-    <hr>
+@app.route("/", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        username = request.form.get("username")
+        password = request.form.get("password")
+        mode = request.form.get("mode")  # "demo" or "full"
 
-    <!-- Full Mode -->
-    <form method="POST" action="{{ url_for('login') }}">
-        <input type="hidden" name="mode" value="full">
-        <input type="password" name="password" placeholder="Enter Full Mode Password" required>
-        <button type="submit">Enter Full Mode</button>
-    </form>
-</div>
-</body>
-</html>
+        if mode == "demo":
+            # Demo mode does not require password
+            session["user_type"] = "demo"
+            flash("Demo mode activated!", "info")
+            return redirect(url_for("dashboard"))
+
+        elif mode == "full":
+            # Full mode requires password from Render environment variable
+            full_password = os.environ.get("FULL_MODE_PASSWORD")
+            if not full_password:
+                flash("Full mode password not set in environment!", "error")
+                return redirect(url_for("login"))
+
+            if password == full_password:
+                session["user_type"] = "full"
+                session["full_uses"] = 0
+                flash("Full mode activated! You can now generate videos.", "success")
+                return redirect(url_for("dashboard"))
+            else:
+                flash("Incorrect Full Mode password.", "error")
+                return redirect(url_for("login"))
+
+        else:
+            flash("Unknown login mode.", "error")
+            return redirect(url_for("login"))
+
+    return render_template("login.html")
